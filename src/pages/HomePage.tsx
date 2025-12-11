@@ -1,96 +1,14 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { ConfigProvider } from 'antd';
+import { useNavigate } from 'react-router-dom'; // <--- 1. Import useNavigate
 import HeroSlider from '../components/layouts/HeroSlider';
+import { useAppDispatch, useAppSelector } from '../redux/hooks';
+import { fetchMovies } from '../redux/slices/movieSlice';
+import type { Movie } from '../interfaces/type';
 
-// --- DỮ LIỆU MẪU ---
+// --- COMPONENTS CON ---
 
-const movies = [
-    {
-        id: 1,
-        title: "NĂM ĐÊM KINH HOÀNG 2 - T16",
-        image: "https://image.tmdb.org/t/p/w500/j9mH1ispQ3x1JgA9O5Ym9p8X9v.jpg",
-        genre: "Kinh dị",
-        date: "05/12/2025",
-    },
-    {
-        id: 2,
-        title: "TRUY TÌM LONG DIÊN HƯƠNG",
-        image: "https://image.tmdb.org/t/p/w500/ckH9deGGPXTEF2u03Y4c4fFvJ7.jpg",
-        genre: "Hài",
-        date: "14/11/2025",
-    },
-    {
-        id: 3,
-        title: "HOÀNG TỬ QUỶ - T18",
-        image: "https://image.tmdb.org/t/p/w500/8xV47NDrjdZDpkVcCFqKDHaORdU.jpg",
-        genre: "Kinh dị",
-        date: "05/12/2025",
-    },
-    {
-        id: 4,
-        title: "ZOOTOPIA: PHI VỤ ĐỘNG TRỜI",
-        image: "https://image.tmdb.org/t/p/w500/eKi8dIrr8voB60hwJFsrTXLGLiy.jpg",
-        genre: "Hoạt hình",
-        date: "28/11/2025",
-    },
-];
-
-const festivalMovies = [
-    {
-        id: 1,
-        title: "KHÚC NHẠC VINH QUANG - P - LHP BA LAN",
-        image: "https://image.tmdb.org/t/p/w500/qA5kPYZA7FkVvzpKrTIqTPReh9v.jpg",
-        genre: "Tâm lý",
-        date: "08/12/2025",
-    },
-    {
-        id: 2,
-        title: "NGỌN LỬA HỒI SINH - T13 - LHP BA LAN",
-        image: "https://image.tmdb.org/t/p/w500/r2J02Z2OpLYct2MW8WdM71qu8.jpg",
-        genre: "Tâm lý",
-        date: "09/12/2025",
-    }
-];
-
-const upcomingMovies = [
-    {
-        id: 1,
-        title: "THẾ HỆ KỲ TÍCH",
-        image: "https://image.tmdb.org/t/p/w500/kDp1vUBnMpe850nRLRZIayaJ8tp.jpg",
-        genre: "Tâm lý",
-        date: "10/12/2025",
-    },
-    {
-        id: 2,
-        title: "VONG NHI: CÚP BẾ",
-        image: "https://image.tmdb.org/t/p/w500/pFlaoIY8R035p65l4HlzL50qElx.jpg",
-        genre: "Kinh dị",
-        date: "12/12/2025",
-    },
-    {
-        id: 3,
-        title: "MẮC BẪY LŨ TÍ QUẬY",
-        image: "https://image.tmdb.org/t/p/w500/hr69f155xW9c8tMvJg8L5s7z7.jpg",
-        genre: "Hoạt hình",
-        date: "12/12/2025",
-    },
-    {
-        id: 4,
-        title: "ANH TRAI TÔI LÀ KHỦNG LONG",
-        image: "https://image.tmdb.org/t/p/w500/yrpPYKijjsMqd46u4o3Ibq05DZF.jpg",
-        genre: "Hoạt hình",
-        date: "12/12/2025",
-    }
-];
-
-const sidebarBanners = [
-    "https://image.tmdb.org/t/p/w500/t5zCBSB5xMDKcDqe91qahCOUYVV.jpg",
-    "https://image.tmdb.org/t/p/w500/u3YQJctMzFN2wBdR4XHU7DCG0ac.jpg",
-];
-
-// --- COMPONENTS ---
-
-const SectionTitle = ({ title, linkText = "Xem tất cả" }: { title: string, linkText?: string }) => (
+const SectionTitle = ({ title, linkText = "Xem tất cả", showViewAll = true }: { title: string, linkText?: string, showViewAll?: boolean }) => (
     <div className="flex justify-between items-end mb-5 pb-2 border-b border-gray-800">
         <div className="flex items-center gap-3">
             <div className="h-2 w-2 rounded-full bg-[#ce1212]"></div>
@@ -98,47 +16,112 @@ const SectionTitle = ({ title, linkText = "Xem tất cả" }: { title: string, l
                 {title}
             </h2>
         </div>
-        <a href="#" className="text-gray-400 text-xs md:text-sm underline hover:text-[#ce1212] transition-colors">
-            {linkText}
-        </a>
+        {showViewAll && (
+            <a href="#" className="text-gray-400 text-xs md:text-sm underline hover:text-[#ce1212] transition-colors">
+                {linkText}
+            </a>
+        )}
     </div>
 );
 
-const MovieCard = ({ movie }: { movie: any }) =>  (
-    <div className="group cursor-pointer flex flex-col">
-        <div className="overflow-hidden rounded-lg aspect-[2/3] mb-3 relative bg-gray-800">
-            <img
-                src={movie.image}
-                alt={movie.title}
-                className="w-full h-full object-cover transition duration-500 group-hover:scale-110"
-                onError={(e) => {
-                    (e.target as HTMLImageElement).src = "https://via.placeholder.com/300x450?text=No+Image";
-                }}
-            />
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <button  className="bg-[#ce1212] text-white text-sm font-bold py-2 px-4 rounded uppercase transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
-                    Mua vé
-                </button>
+// ---  COMPONENT MOVIECARD ---
+const MovieCard = ({ movie }: { movie: Movie }) => {
+    const navigate = useNavigate(); // <--- 2. Khai báo hook chuyển trang
+
+    // Format ngày tháng
+    const formattedDate = new Date(movie.release_date).toLocaleDateString('vi-VN', {
+        day: '2-digit', month: '2-digit', year: 'numeric'
+    });
+
+    // Hàm xử lý chuyển hướng
+    const handleBooking = (e?: React.MouseEvent) => {
+        // Ngăn sự kiện nổi bọt nếu cần (để tránh conflict nếu lồng nhau)
+        if (e) e.stopPropagation(); 
+        
+        // Chuyển hướng sang trang chọn ghế kèm ID phim
+        navigate(`/booking/${movie._id}`);
+    };
+
+    return (
+        // Thêm onClick vào div bao ngoài để click vào đâu trên card cũng đi mua vé được
+        <div onClick={handleBooking} className="group cursor-pointer flex flex-col h-full">
+            <div className="overflow-hidden rounded-lg aspect-[2/3] mb-3 relative bg-gray-800">
+                <img
+                    src={movie.poster_url}
+                    alt={movie.title}
+                    className="w-full h-full object-cover transition duration-500 group-hover:scale-110"
+                    onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.onerror = null; // Ngăn lặp vô hạn
+                        target.src = "https://placehold.co/300x450?text=No+Image"; // Dùng placehold.co ổn định hơn
+                    }}
+                />
+                
+                {/* Overlay nút mua vé */}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button 
+                        // <--- 3. Gắn sự kiện vào nút
+                        onClick={handleBooking} 
+                        className="bg-[#ce1212] text-white text-sm font-bold py-2 px-4 rounded uppercase transform translate-y-4 group-hover:translate-y-0 transition-all duration-300 hover:bg-red-700"
+                    >
+                        Mua vé
+                    </button>
+                </div>
+
+                {/* Badge Rating */}
+                <div className="absolute top-2 right-2 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded">
+                    {movie.rating_stats.average} ★
+                </div>
             </div>
+            
+            <div className="flex items-center text-[11px] text-gray-500 mb-1 gap-2 font-medium">
+                <span>{formattedDate}</span>
+                <span className="w-1 h-1 bg-gray-600 rounded-full"></span>
+                <span className="truncate max-w-[100px]">{movie.genres?.[0]}</span>
+            </div>
+            
+            <h3 className="text-sm md:text-base font-bold text-white uppercase leading-tight group-hover:text-[#ce1212] transition line-clamp-2">
+                {movie.title}
+            </h3>
         </div>
-        <div className="flex items-center text-[11px] text-gray-500 mb-1 gap-2 font-medium">
-            <span>{movie.date}</span>
-        </div>
-        <h3 className="text-sm md:text-base font-bold text-white uppercase leading-tight group-hover:text-[#ce1212] transition line-clamp-2">
-            {movie.title}
-        </h3>
-    </div>
-);
+    );
+};
 
-// --- MAIN COMPONENT ---
+// --- MAIN PAGE ---
 
 const HomePage = () => {
+    const dispatch = useAppDispatch();
+    const { list: movieList, isLoading } = useAppSelector((state) => state.movies);
+
+    useEffect(() => {
+        dispatch(fetchMovies());
+    }, [dispatch]);
+
+    const { nowShowing, upcoming, festivals } = useMemo(() => {
+        if (!movieList || movieList.length === 0) return { nowShowing: [], upcoming: [], festivals: [] };
+
+        return {
+            nowShowing: movieList.filter(m => m.status === 'released' || m.status === 'now_showing'),
+            upcoming: movieList.filter(m => m.status === 'coming_soon'),
+            festivals: movieList.filter(m => m.genres.includes('Drama')).slice(0, 4)
+        };
+    }, [movieList]);
+
+    const sidebarBanners = [
+        "https://image.tmdb.org/t/p/w500/t5zCBSB5xMDKcDqe91qahCOUYVV.jpg",
+        "https://image.tmdb.org/t/p/w500/u3YQJctMzFN2wBdR4XHU7DCG0ac.jpg",
+    ];
+
     const theme = {
         token: {
             colorPrimary: "#ce1212",
             fontFamily: "Arial, sans-serif",
         },
     };
+
+    if (isLoading) {
+        return <div className="min-h-screen bg-[#0f172a] flex items-center justify-center text-white">Đang tải phim...</div>;
+    }
 
     return (
         <ConfigProvider theme={theme}>
@@ -156,20 +139,27 @@ const HomePage = () => {
                             <div className="mb-12">
                                 <SectionTitle title="Phim đang chiếu" />
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                    {movies.map((movie) => (
-                                        <MovieCard key={movie.id} movie={movie} />
-                                    ))}
+                                    {nowShowing.length > 0 ? (
+                                        nowShowing.map((movie) => (
+                                            <MovieCard key={movie._id} movie={movie} />
+                                        ))
+                                    ) : (
+                                        <p className="text-gray-500 col-span-4">Chưa có phim đang chiếu.</p>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* 2. LIÊN HOAN PHIM (ĐÃ SỬA: Dùng grid-cols-4 giống hệt bên trên) */}
+                            {/* 2. LIÊN HOAN PHIM */}
                             <div className="mb-12">
                                 <SectionTitle title="Liên hoan phim, Tuần phim" />
-                                {/* SỬA TẠI ĐÂY: Dùng chung Grid System 4 cột */}
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                    {festivalMovies.map((movie) => (
-                                        <MovieCard key={movie.id} movie={movie} />
-                                    ))}
+                                    {festivals.length > 0 ? (
+                                        festivals.map((movie) => (
+                                            <MovieCard key={movie._id} movie={movie} />
+                                        ))
+                                    ) : (
+                                        <p className="text-gray-500 col-span-4">Đang cập nhật sự kiện.</p>
+                                    )}
                                 </div>
                             </div>
 
@@ -177,9 +167,13 @@ const HomePage = () => {
                             <div className="mb-8">
                                 <SectionTitle title="Phim sắp chiếu" />
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                    {upcomingMovies.map((movie) => (
-                                        <MovieCard key={movie.id} movie={movie} />
-                                    ))}
+                                    {upcoming.length > 0 ? (
+                                        upcoming.map((movie) => (
+                                            <MovieCard key={movie._id} movie={movie} />
+                                        ))
+                                    ) : (
+                                        <p className="text-gray-500 col-span-4">Sắp có phim mới cập bến!</p>
+                                    )}
                                 </div>
                             </div>
 
@@ -196,7 +190,9 @@ const HomePage = () => {
                                         alt="Banner" 
                                         className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105"
                                         onError={(e) => {
-                                            (e.target as HTMLImageElement).src = "https://via.placeholder.com/300x150?text=Quang+Cao";
+                                            const target = e.target as HTMLImageElement;
+                                            target.onerror = null;
+                                            target.src = "https://placehold.co/300x150?text=Quang+Cao";
                                         }}
                                     />
                                 </div>
