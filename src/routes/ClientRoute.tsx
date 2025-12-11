@@ -8,6 +8,7 @@ import AboutSection from "../pages/AboutSection";
 import PromotionSection from "../pages/PromotionSection";
 import ShowtimesSection from "../pages/ShowtimesSection";
 import TicketPriceSection from "../pages/TicketPriceSection";
+import TicketSuccessPage from "../pages/TicketSuccessPage";
 
 const clientRoute = [{
     path: "/",
@@ -15,9 +16,10 @@ const clientRoute = [{
     children: [
         { index: true, element: <Navigate to={"/homepage"} /> },
         { path: "/homepage", Component: HomePage },
-        { path: "/seatSelection", Component: SeatSelection },
+        { path: "/booking/:id", Component: SeatSelection },
         { path: "/payment", Component: PaymentPage },
         { path: "/paymentQRPage", Component: PaymentQRPage },
+        { path: "/ticket-success", Component: TicketSuccessPage },
         { path: "/about", Component: AboutSection },
         { path: "/promotion", Component: PromotionSection },
         { path: "/showtimes", Component: ShowtimesSection },
