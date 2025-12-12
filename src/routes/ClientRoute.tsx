@@ -9,6 +9,7 @@ import PromotionSection from "../pages/PromotionSection";
 import ShowtimesSection from "../pages/ShowtimesSection";
 import TicketPriceSection from "../pages/TicketPriceSection";
 import TicketSuccessPage from "../pages/TicketSuccessPage";
+import UserProfile from "../pages/UserProfile";
 
 const clientRoute = [{
     path: "/",
@@ -24,6 +25,7 @@ const clientRoute = [{
         { path: "/promotion", Component: PromotionSection },
         { path: "/showtimes", Component: ShowtimesSection },
         { path: "/ticket-price", Component: TicketPriceSection },
+        { path: "/profile", Component: UserProfile },
 
     ],
 }]
