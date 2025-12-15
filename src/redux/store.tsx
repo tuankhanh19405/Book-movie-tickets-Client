@@ -2,6 +2,7 @@ import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import movieReducer from './slices/movieSlice';
 import bookingReducer from './slices/bookingSlice';
 import authReducer from './slices/authSlice'; 
+import showtimeReducer from './slices/showtimeSlice'
 import { 
   persistStore, 
   persistReducer,
@@ -22,6 +23,7 @@ const rootReducer = combineReducers({
   movies: movieReducer,
   booking: bookingReducer,
   auth: authReducer, 
+  showtimes: showtimeReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

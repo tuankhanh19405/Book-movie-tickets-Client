@@ -1,120 +1,136 @@
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import { Check } from "lucide-react"
-import { useAppSelector } from "../redux/hooks" // 1. Import Hook Redux
-import { message } from "antd"
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Check, CreditCard, QrCode, Smartphone } from "lucide-react"; // Thêm icon cho sinh động
+import { useAppSelector } from "../redux/hooks"; 
+import { message } from "antd";
 
 export default function PaymentPage() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   
-  // 2. Lấy dữ liệu Booking từ Redux Store
-  const { currentBooking } = useAppSelector((state) => state.booking)
+  // 1. Lấy dữ liệu Booking từ Redux Store
+  const { currentBooking } = useAppSelector((state) => state.booking);
 
-  // State quản lý phương thức thanh toán và điều khoản
-  const [selectedMethod, setSelectedMethod] = useState<string>("vietqr")
-  const [agreed, setAgreed] = useState(false)
+  // Mặc định chọn VNPAY để người dùng thấy tính năng thanh toán online trước
+  const [selectedMethod, setSelectedMethod] = useState<string>("vnpay");
+  const [agreed, setAgreed] = useState(false);
 
-  // 3. Bảo vệ Route: Nếu chưa có booking (do F5 hoặc vào trực tiếp) -> Về Home
+  // 2. Bảo vệ Route: Nếu F5 mất dữ liệu -> Về trang chủ
   useEffect(() => {
     if (!currentBooking) {
-      message.warning("Vui lòng chọn ghế trước khi thanh toán!")
-      navigate("/")
+      message.warning("Vui lòng chọn ghế trước khi thanh toán!");
+      navigate("/");
     }
-  }, [currentBooking, navigate])
+  }, [currentBooking, navigate]);
 
-  // Ngăn render nếu không có dữ liệu để tránh lỗi crash
-  if (!currentBooking) return null
+  if (!currentBooking) return null;
 
-  // Destructuring dữ liệu cho gọn
-  const { movie, seats, totalAmount, date, time } = currentBooking
+  const { movie, seats, totalAmount, date, time } = currentBooking;
 
+  // Danh sách phương thức thanh toán
   const paymentMethods = [
-    { id: "vietqr", name: "VietQR", logoColor: "text-red-500" },
-    { id: "vnpay", name: "VNPAY", logoColor: "text-blue-500" },
-    { id: "viettel", name: "Viettel Money", logoColor: "text-red-600" },
-    { id: "momo", name: "MoMo", logoColor: "text-pink-600" },
-  ]
+    { 
+      id: "vnpay", 
+      name: "VNPAY / Thẻ ATM / Visa", 
+      desc: "Thanh toán qua cổng VNPAY (Khuyên dùng)",
+      icon: <CreditCard size={20} className="text-blue-500"/>,
+      type: "gateway" // Loại chuyển cổng thanh toán
+    },
+    { 
+      id: "vietqr", 
+      name: "VietQR (Chuyển khoản)", 
+      desc: "Quét mã QR qua ứng dụng ngân hàng",
+      icon: <QrCode size={20} className="text-red-500"/>,
+      type: "qr" // Loại quét mã
+    },
+    { 
+      id: "momo", 
+      name: "Ví MoMo", 
+      desc: "Quét mã qua ứng dụng MoMo",
+      icon: <Smartphone size={20} className="text-pink-600"/>,
+      type: "qr" // Loại quét mã
+    },
+  ];
 
+  // --- 🔥 LOGIC QUAN TRỌNG: ĐIỀU HƯỚNG THEO PHƯƠNG THỨC ---
   const handleConfirmPayment = () => {
-    // Có thể lưu method vào Redux nếu cần, ở đây ta chuyển trang luôn
-    navigate("/paymentQRPage")
-  }
+    if (!agreed) {
+        message.error("Vui lòng đồng ý điều khoản trước khi thanh toán");
+        return;
+    }
+
+    // Tìm phương thức đang chọn
+    const method = paymentMethods.find(m => m.id === selectedMethod);
+
+    if (method?.type === 'gateway') {
+        // CASE 1: Nếu là Cổng thanh toán (VNPAY) -> Sang trang Giả lập nhập thẻ
+        // Truyền kèm state currentBooking để bên kia hiển thị số tiền
+        navigate("/payment-gateway", { state: currentBooking });
+    } else {
+        // CASE 2: Nếu là VietQR/MoMo -> Sang trang hiện ảnh QR
+        navigate("/paymentQRPage", { state: { ...currentBooking, method: selectedMethod } });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0b0e14] text-gray-200 font-sans pb-20 pt-10">
 
       <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-        {/* CỘT TRÁI: THÔNG TIN PHIM & VÉ */}
+        {/* CỘT TRÁI: THÔNG TIN VÉ */}
         <div className="lg:col-span-2 space-y-6">
-
-          {/* Card 1: Thông tin phim (DỮ LIỆU ĐỘNG) */}
           <div className="bg-[#151a23] p-6 rounded-xl border border-gray-800 shadow-sm">
-            <h2 className="text-white font-bold text-lg mb-6">Thông tin phim</h2>
+            <h2 className="text-white font-bold text-lg mb-6 uppercase tracking-wide border-l-4 border-red-600 pl-3">
+                Thông tin đặt vé
+            </h2>
 
-            <div className="mb-6 flex gap-4">
-               {/* Thêm ảnh poster nhỏ cho sinh động */}
-               <img src={movie?.poster_url} alt={movie?.title} className="w-20 h-28 object-cover rounded" />
-               <div>
-                  <p className="text-gray-400 text-sm mb-1">Phim</p>
-                  <p className="text-white font-bold text-xl uppercase">{movie?.title}</p>
-                  <span className="text-xs bg-yellow-500 text-black font-bold px-2 py-0.5 rounded mt-2 inline-block">
-                    {movie?.rating_stats?.average || "T16"}
-                  </span>
+            <div className="flex flex-col md:flex-row gap-6 mb-6">
+               <img 
+                 src={movie?.poster_url} 
+                 alt={movie?.title} 
+                 className="w-32 h-48 object-cover rounded-lg shadow-lg mx-auto md:mx-0" 
+               />
+               <div className="flex-1 space-y-4">
+                  <div>
+                    <h3 className="text-2xl font-bold text-white uppercase">{movie?.title}</h3>
+                    <span className="text-xs bg-yellow-500 text-black font-extrabold px-2 py-0.5 rounded mt-2 inline-block">
+                        {movie?.rating_stats?.average || "T16"}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                     <div>
+                        <p className="text-gray-500">Rạp chiếu</p>
+                        <p className="text-white font-bold">NCC Center - Rạp 5</p>
+                     </div>
+                     <div>
+                        <p className="text-gray-500">Suất chiếu</p>
+                        <p className="text-[#e54d4d] font-bold text-lg">{time} - {date}</p>
+                     </div>
+                     <div>
+                        <p className="text-gray-500">Ghế chọn</p>
+                        <p className="text-white font-bold text-lg">{seats.join(", ")}</p>
+                     </div>
+                     <div>
+                        <p className="text-gray-500">Combo bắp nước</p>
+                        <p className="text-white font-bold">Chưa chọn</p>
+                     </div>
+                  </div>
                </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-y-6 gap-x-4 border-t border-gray-800 pt-6">
-              <div>
-                <p className="text-gray-400 text-sm mb-1">Ngày giờ chiếu</p>
-                <div className="flex gap-2 text-orange-500 font-bold">
-                  {time} - {date}
-                </div>
-              </div>
-              <div>
-                <p className="text-gray-400 text-sm mb-1">Ghế</p>
-                <p className="text-white font-bold break-words">{seats.join(", ")}</p>
-              </div>
-              <div>
-                <p className="text-gray-400 text-sm mb-1">Định dạng</p>
-                <p className="text-white font-bold">2D Phụ đề</p>
-              </div>
-              <div>
-                <p className="text-gray-400 text-sm mb-1">Phòng chiếu</p>
-                <p className="text-white font-bold">Rạp 05</p>
-              </div>
+            <div className="border-t border-gray-700 pt-4 flex justify-between items-center">
+                <span className="text-gray-400 font-bold uppercase">Tổng tiền vé</span>
+                <span className="text-2xl text-[#e54d4d] font-bold">{totalAmount?.toLocaleString()}đ</span>
             </div>
           </div>
-
-          {/* Card 2: Thông tin thanh toán (Table) */}
-          <div className="bg-[#151a23] p-6 rounded-xl border border-gray-800 shadow-sm">
-            <h2 className="text-white font-bold text-lg mb-6">Thông tin thanh toán</h2>
-
-            <div className="w-full">
-              <div className="grid grid-cols-3 text-sm text-gray-400 font-bold pb-4 border-b border-gray-700 mb-4">
-                <div className="col-span-1">Danh mục</div>
-                <div className="col-span-1 text-center">Số lượng</div>
-                <div className="col-span-1 text-right">Tổng tiền</div>
-              </div>
-
-              <div className="grid grid-cols-3 text-sm items-center">
-                <div className="col-span-1 font-bold text-white">
-                    Vé Phim ({seats.join(", ")})
-                </div>
-                <div className="col-span-1 text-center text-gray-300">{seats.length}</div>
-                <div className="col-span-1 text-right text-white font-bold">
-                    {totalAmount.toLocaleString()}đ
-                </div>
-              </div>
-            </div>
-          </div>
-
         </div>
 
-        {/* CỘT PHẢI: THANH TOÁN */}
+        {/* CỘT PHẢI: PHƯƠNG THỨC THANH TOÁN */}
         <div className="lg:col-span-1">
           <div className="bg-[#151a23] p-6 rounded-xl border border-gray-800 shadow-sm sticky top-4">
-            <h2 className="text-white font-bold text-lg mb-6">Phương thức thanh toán</h2>
+            <h2 className="text-white font-bold text-lg mb-6 uppercase tracking-wide border-l-4 border-red-600 pl-3">
+                Thanh toán
+            </h2>
 
             {/* List methods */}
             <div className="space-y-3 mb-8">
@@ -123,66 +139,65 @@ export default function PaymentPage() {
                   key={method.id}
                   onClick={() => setSelectedMethod(method.id)}
                   className={`
-                    relative flex items-center gap-4 p-4 rounded-lg border cursor-pointer transition-all
+                    relative flex items-center gap-4 p-4 rounded-lg border cursor-pointer transition-all duration-200
                     ${selectedMethod === method.id
-                      ? "border-red-600 bg-[#1c222e]"
+                      ? "border-red-600 bg-[#1c222e] shadow-md shadow-red-900/10"
                       : "border-gray-700 hover:border-gray-500 bg-[#11141b]"}
                   `}
                 >
-                  {/* Radio Icon simulation */}
+                  {/* Icon */}
+                  <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center shrink-0">
+                    {method.icon}
+                  </div>
+
+                  {/* Name & Desc */}
+                  <div className="flex-1">
+                    <p className={`font-bold text-sm ${selectedMethod === method.id ? "text-white" : "text-gray-300"}`}>
+                        {method.name}
+                    </p>
+                    <p className="text-xs text-gray-500">{method.desc}</p>
+                  </div>
+
+                  {/* Check Icon */}
                   <div className={`
                     w-5 h-5 rounded-full border flex items-center justify-center
-                    ${selectedMethod === method.id ? "border-red-600" : "border-gray-500"}
+                    ${selectedMethod === method.id ? "border-red-600 bg-red-600" : "border-gray-600"}
                   `}>
-                    {selectedMethod === method.id && <div className="w-2.5 h-2.5 bg-red-600 rounded-full" />}
+                    {selectedMethod === method.id && <Check size={12} className="text-white" />}
                   </div>
-
-                  {/* Fake Logo + Name */}
-                  <div className="flex items-center gap-3">
-                    <span className={`font-bold text-sm ${method.logoColor}`}>●●</span>
-                    <span className="font-medium text-white">{method.name}</span>
-                  </div>
-
-                  {/* Tick icon top-right */}
-                  {selectedMethod === method.id && (
-                    <div className="absolute top-[-1px] right-[-1px] bg-red-600 text-white rounded-bl-lg rounded-tr-lg p-0.5">
-                      <Check size={12} />
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
 
-            {/* Chi phí */}
-            <h2 className="text-white font-bold text-lg mb-4">Chi phí</h2>
-            <div className="space-y-3 mb-6 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Thanh toán</span>
-                <span className="text-white font-bold">{totalAmount.toLocaleString()}đ</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Phí dịch vụ</span>
-                <span className="text-white font-bold">0đ</span>
-              </div>
-              <div className="flex justify-between pt-3 border-t border-gray-700">
-                <span className="text-gray-400 font-bold">Tổng cộng</span>
-                <span className="text-white font-bold text-lg text-red-500">{totalAmount.toLocaleString()}đ</span>
-              </div>
+            {/* Tổng tiền Final */}
+            <div className="bg-[#0b0e14] p-4 rounded-lg mb-6">
+                <div className="flex justify-between items-center mb-1">
+                    <span className="text-gray-400 text-sm">Thành tiền</span>
+                    <span className="text-white font-bold">{totalAmount?.toLocaleString()}đ</span>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-sm">Khuyến mãi</span>
+                    <span className="text-green-500 font-bold">-0đ</span>
+                </div>
+                <div className="border-t border-gray-800 mt-3 pt-3 flex justify-between items-center">
+                    <span className="text-white font-bold">Tổng thanh toán</span>
+                    <span className="text-[#ce1212] font-bold text-xl">{totalAmount?.toLocaleString()}đ</span>
+                </div>
             </div>
 
             {/* Điều khoản */}
-            <div className="flex gap-3 mb-6">
+            <div className="flex gap-3 mb-6 items-start">
               <div
                 onClick={() => setAgreed(!agreed)}
                 className={`
-                  w-5 h-5 rounded border border-gray-500 flex-shrink-0 cursor-pointer flex items-center justify-center mt-0.5
-                  ${agreed ? "bg-red-600 border-red-600" : "bg-transparent"}
+                  w-5 h-5 rounded border border-gray-500 flex-shrink-0 cursor-pointer flex items-center justify-center mt-0.5 transition-colors
+                  ${agreed ? "bg-red-600 border-red-600" : "bg-transparent hover:border-white"}
                 `}
               >
                 {agreed && <Check size={14} className="text-white" />}
               </div>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                Tôi xác nhận các thông tin đã chính xác và đồng ý với các <a href="#" className="text-blue-500 hover:underline">điều khoản & chính sách</a>
+              <p className="text-xs text-gray-400 leading-relaxed select-none cursor-pointer" onClick={() => setAgreed(!agreed)}>
+                Tôi đồng ý với <span className="text-[#e54d4d]">Điều khoản sử dụng</span> và xác nhận mua vé cho người xem đúng độ tuổi quy định.
               </p>
             </div>
 
@@ -191,16 +206,22 @@ export default function PaymentPage() {
               <button
                 onClick={handleConfirmPayment}
                 disabled={!agreed}
-                className="w-full bg-red-700 hover:bg-red-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold py-3 rounded-full transition shadow-lg uppercase tracking-wider"
+                className={`
+                    w-full font-bold py-3.5 rounded-lg transition-all shadow-lg uppercase tracking-wide text-sm flex items-center justify-center gap-2
+                    ${agreed 
+                        ? "bg-gradient-to-r from-red-600 to-red-700 text-white hover:scale-[1.02] hover:shadow-red-900/30" 
+                        : "bg-gray-700 text-gray-400 cursor-not-allowed"}
+                `}
               >
-                Thanh toán
+                <CreditCard size={18} />
+                Thanh toán ngay
               </button>
 
               <button
                 onClick={() => navigate(-1)}
-                className="w-full text-gray-400 hover:text-white font-medium py-2 transition flex items-center justify-center gap-1"
+                className="w-full text-gray-400 hover:text-white font-medium py-2 transition text-sm"
               >
-                Quay lại
+                Quay lại chọn ghế
               </button>
             </div>
 

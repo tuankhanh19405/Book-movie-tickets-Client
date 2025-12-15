@@ -10,6 +10,7 @@ import ShowtimesSection from "../pages/ShowtimesSection";
 import TicketPriceSection from "../pages/TicketPriceSection";
 import TicketSuccessPage from "../pages/TicketSuccessPage";
 import UserProfile from "../pages/UserProfile";
+import FakePaymentGateway from "../pages/FakePaymentGateway";
 
 const clientRoute = [{
     path: "/",
@@ -19,6 +20,7 @@ const clientRoute = [{
         { path: "/homepage", Component: HomePage },
         { path: "/booking/:id", Component: SeatSelection },
         { path: "/payment", Component: PaymentPage },
+        { path: "/payment-gateway", Component: FakePaymentGateway },
         { path: "/paymentQRPage", Component: PaymentQRPage },
         { path: "/ticket-success", Component: TicketSuccessPage },
         { path: "/about", Component: AboutSection },
