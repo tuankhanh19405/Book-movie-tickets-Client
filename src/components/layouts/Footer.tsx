@@ -1,4 +1,3 @@
-import React from "react";
 import { FacebookFilled, YoutubeFilled } from "@ant-design/icons";
 
 const Footer = () => {

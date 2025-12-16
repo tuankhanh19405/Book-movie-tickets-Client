@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import  { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, CreditCard, QrCode, Smartphone } from "lucide-react"; // Thêm icon cho sinh động
 import { useAppSelector } from "../redux/hooks"; 

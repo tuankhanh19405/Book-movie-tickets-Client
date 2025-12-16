@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Check, Home, Download, Share2 } from "lucide-react";
 import { message } from "antd";
@@ -20,7 +20,7 @@ export default function TicketSuccessPage() {
 
   if (!booking) return null;
 
-  const { movie, seats, date, time, totalAmount } = booking;
+  const { movie, seats, date, time } = booking;
   const cinemaName = "NCC Cinema";
   const roomName = "Cinema 05";
   const orderId = "9724" + Math.floor(Math.random() * 1000); // Giả lập mã đơn hàng
