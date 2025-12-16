@@ -1,11 +1,12 @@
-import React, { useEffect, useState, useMemo } from "react";
+import  { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
 
 // Import Actions
 import { fetchMovies } from "../redux/slices/movieSlice";
 import { setBookingInfo, fetchBookedSeats } from "../redux/slices/bookingSlice";
-import { fetchShowtimes, Showtime } from "../redux/slices/showtimeSlice"; // Import slice showtime
+import { fetchShowtimes } from "../redux/slices/showtimeSlice"; // Import slice showtime
+import type { Showtime } from "../interfaces/type";
 
 export default function BookingPage() {
   const { id } = useParams<{ id: string }>(); // Movie ID

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Button } from 'antd';
 
 // --- 1. Định nghĩa Data Type ---

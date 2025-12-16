@@ -1,4 +1,3 @@
-import React from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Spin, Result, Button, ConfigProvider } from 'antd';
 import { useAppSelector, useAppDispatch } from '../redux/hooks';
