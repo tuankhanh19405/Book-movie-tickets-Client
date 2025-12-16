@@ -5,22 +5,29 @@ const HeroSlider = () => {
   const banners = [
     {
       id: 1,
-      // Đây là ảnh Tafiti (Tôi dùng link demo, bạn hãy thay link thật của bạn vào)
-      image: "https://media.lottecinemavn.com/Media/WebAdmin/4b256b68b824424395d9dc004a434771.jpg",
-      alt: "Tafiti - Náo loạn sa mạc",
+      // Dune: Part Two
+      image: "https://image.tmdb.org/t/p/original/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg",
+      alt: "Dune: Part Two - Hành tinh cát",
     },
     {
       id: 2,
-      image: "https://chieuphimquocgia.com.vn/Content/Images/Banner/Banner%20Trang%20chu/2024/Banner%20Trang%20chu%202024.jpg",
-      alt: "Banner NCC 2024",
+      // Inside Out 2
+      image: "https://image.tmdb.org/t/p/original/xg27NrXi7VXCGUr7MG75UqLl6Vg.jpg",
+      alt: "Inside Out 2 - Những mảnh ghép cảm xúc",
     },
     {
       id: 3,
-      image: "https://files.betacorp.vn/files/media%2fimages%2f2024%2f05%2f03%2flat-mat-7-1702x621-110306-030524-52.jpg",
-      alt: "Lật mặt 7",
+      // Furiosa: A Mad Max Saga (Thay mới)
+      image: "https://image.tmdb.org/t/p/original/wNAhuOZ3Zf84jCIlrcI6JhgmY5q.jpg",
+      alt: "Furiosa: Câu chuyện từ Max Điên",
     },
-  ];
-
+    {
+      id: 4,
+      // Kingdom of the Planet of the Apes (Thay mới)
+      image: "https://image.tmdb.org/t/p/original/fqv8v6AycXKsivp1T5yKtLbGXce.jpg",
+      alt: "Hành tinh khỉ: Vương quốc mới",
+    }
+];
   const settings = {
     autoplay: true,
     autoplaySpeed: 4000,

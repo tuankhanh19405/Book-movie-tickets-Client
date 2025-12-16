@@ -3,6 +3,7 @@ import movieReducer from './slices/movieSlice';
 import bookingReducer from './slices/bookingSlice';
 import authReducer from './slices/authSlice'; 
 import showtimeReducer from './slices/showtimeSlice'
+import uiReducer from './slices/uiSlice'
 import { 
   persistStore, 
   persistReducer,
@@ -24,6 +25,7 @@ const rootReducer = combineReducers({
   booking: bookingReducer,
   auth: authReducer, 
   showtimes: showtimeReducer,
+  ui :uiReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

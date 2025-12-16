@@ -82,7 +82,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ form, setIsChangePassOpen, on
 );
 
 // =========================================
-// 2. COMPONENT CON: LỊCH SỬ MUA VÉ (Đã Fix Lỗi Hiển Thị)
+// 2. COMPONENT CON: LỊCH SỬ MUA VÉ (ĐÃ SỬA LỖI DATE)
 // =========================================
 interface PurchaseHistoryProps {
   history: any[];
@@ -97,27 +97,49 @@ const PurchaseHistory: React.FC<PurchaseHistoryProps> = ({ history, isLoading })
        </div>
     ) : history && history.length > 0 ? (
       history.map((ticket: any) => {
-          // --- XỬ LÝ DỮ LIỆU TỪ API ---
-          // 1. Tên phim: Ưu tiên movie_title (như trong ảnh network bạn gửi)
+          // --- 1. XỬ LÝ TÊN PHIM & POSTER ---
           const movieName = ticket.movie_title || ticket.movie_details?.title || "Phim chưa cập nhật tên";
-          
-          // 2. Poster: Fallback ảnh nếu không có
           const posterUrl = ticket.movie_details?.poster_url || "https://via.placeholder.com/150x220?text=No+Image";
           
-          // 3. Ngày giờ:
-          const bookingDate = new Date(ticket.created_at || ticket.date);
-          const formattedDate = bookingDate.toLocaleDateString('vi-VN');
-          const formattedTime = ticket.time || bookingDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+          // --- 2. XỬ LÝ NGÀY CHIẾU (DATE) AN TOÀN ---
+          let displayDate = "Đang cập nhật";
           
-          // 4. Danh sách ghế: Xử lý cả trường hợp mảng chuỗi ["T1", "T2"] hoặc mảng object
+          if (ticket.date) {
+            // Trường hợp 1: Date là chuỗi "DD/MM/YYYY" (VD: "08/12/2025") -> Hiển thị luôn
+            if (ticket.date.includes('/')) {
+                displayDate = ticket.date;
+            } 
+            // Trường hợp 2: Date là ISO String (VD: "2025-12-08T00:00...") -> Format lại
+            else {
+                const d = new Date(ticket.date);
+                if (!isNaN(d.getTime())) {
+                    displayDate = d.toLocaleDateString('vi-VN');
+                }
+            }
+          } else if (ticket.created_at) {
+             // Fallback: Nếu không có ngày chiếu, lấy ngày mua vé
+             displayDate = new Date(ticket.created_at).toLocaleDateString('vi-VN');
+          }
+
+          // --- 3. XỬ LÝ GIỜ CHIẾU (TIME) ---
+          let displayTime = ticket.time;
+          // Nếu time bị lỗi hoặc không có, thử lấy từ created_at
+          if (!displayTime || displayTime === "Invalid Date") {
+             if (ticket.created_at) {
+                displayTime = new Date(ticket.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit'});
+             } else {
+                displayTime = "--:--";
+             }
+          }
+          
+          // --- 4. DANH SÁCH GHẾ ---
           let seatList = "Chưa chọn ghế";
           if (Array.isArray(ticket.seats) && ticket.seats.length > 0) {
-             seatList = ticket.seats.join(", "); // Trường hợp API trả về ["T1", "T2"]
+             seatList = ticket.seats.join(", "); 
           } else if (Array.isArray(ticket.tickets)) {
              seatList = ticket.tickets.map((t: any) => t.seat_name || t).join(", ");
           }
 
-          // 5. Trạng thái
           const isConfirmed = ticket.status === 'confirmed' || ticket.status === 'success';
 
           return (
@@ -137,10 +159,22 @@ const PurchaseHistory: React.FC<PurchaseHistoryProps> = ({ history, isLoading })
                      </Tag>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 text-sm text-gray-400 mt-3">
-                     <div className="flex items-center gap-2"><MapPin size={14} className="text-red-600" /><span>NCC Cinema</span></div>
-                     <div className="flex items-center gap-2"><Calendar size={14} className="text-red-600" /><span>{formattedDate}</span></div>
-                     <div className="flex items-center gap-2"><Ticket size={14} className="text-red-600" /><span className="truncate max-w-[200px]" title={seatList}>Ghế: <b className="text-white">{seatList}</b></span></div>
-                     <div className="flex items-center gap-2"><Clock size={14} className="text-red-600" /><span>{formattedTime}</span></div>
+                     <div className="flex items-center gap-2">
+                        <MapPin size={14} className="text-red-600" />
+                        <span>NCC Cinema</span>
+                     </div>
+                     <div className="flex items-center gap-2">
+                        <Calendar size={14} className="text-red-600" />
+                        <span className="text-white">{displayDate}</span> {/* Đã sửa */}
+                     </div>
+                     <div className="flex items-center gap-2">
+                        <Ticket size={14} className="text-red-600" />
+                        <span className="truncate max-w-[200px]" title={seatList}>Ghế: <b className="text-white">{seatList}</b></span>
+                     </div>
+                     <div className="flex items-center gap-2">
+                        <Clock size={14} className="text-red-600" />
+                        <span>{displayTime}</span> {/* Đã sửa */}
+                     </div>
                   </div>
                 </div>
                 <div className="mt-4 pt-3 border-t border-gray-800 flex justify-between items-end">
@@ -157,12 +191,12 @@ const PurchaseHistory: React.FC<PurchaseHistoryProps> = ({ history, isLoading })
     ) : (
       <div className="py-16 flex flex-col items-center justify-center bg-[#151a23] rounded-xl border border-gray-800 border-dashed">
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span className="text-gray-500">Bạn chưa có lịch sử đặt vé nào</span>} />
-          <button className="mt-4 text-red-500 hover:text-red-400 font-bold text-sm">Đặt vé ngay</button>
+          {/* Nút đặt vé ngay chuyển hướng về trang chủ */}
+          <a href="/" className="mt-4 text-red-500 hover:text-red-400 font-bold text-sm cursor-pointer">Đặt vé ngay</a>
       </div>
     )}
   </div>
 );
-
 // =========================================
 // 3. COMPONENT CHÍNH: UserProfile
 // =========================================
