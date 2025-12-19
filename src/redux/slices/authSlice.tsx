@@ -2,74 +2,80 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
 // --- CẤU HÌNH API URL ---
-const AUTH_API_URL = "https://api-class-o1lo.onrender.com/api/khanhphuong/auth"; 
-const USER_API_URL = "https://api-class-o1lo.onrender.com/api/khanhphuong/users"; 
+const AUTH_API_URL = "https://api-class-o1lo.onrender.com/api/khanhphuong/auth";
+const USER_API_URL = "https://api-class-o1lo.onrender.com/api/khanhphuong/users";
 
-// --- 1. THUNK LOGIN ---
+// --- 1. THUNK LOGIN (CÓ CHECK STATUS) ---
 export const loginUser = createAsyncThunk(
   'auth/login',
   async (userData: any, thunkAPI) => {
     try {
       const response = await axios.post(`${AUTH_API_URL}/login`, userData);
-      localStorage.setItem('user', JSON.stringify(response.data.data.user));
-      localStorage.setItem('accessToken', response.data.data.accessToken);
-      return response.data.data.user;
+
+      const user = response.data.data.user;
+      const accessToken = response.data.data.accessToken;
+
+
+      if (user.status === 'banned') {
+        return thunkAPI.rejectWithValue('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ với Phan Khanh để được giải quyết vấn đề nhanh nhất có thể nhé!!!');
+      }
+
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('accessToken', accessToken);
+
+      return user;
+
     } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.response?.data?.message || 'Đăng nhập thất bại');
+
+      return thunkAPI.rejectWithValue(error.response?.data?.message || error || 'Đăng nhập thất bại');
     }
   }
 );
 
-// --- 2. THUNK REGISTER ---
+// --- 2. THUNK REGISTER (AUTO ADD STATUS ACTIVE) ---
 export const registerUser = createAsyncThunk(
-    'auth/register',
-    async (userData: any, thunkAPI) => {
-      try {
-        const response = await axios.post(`${AUTH_API_URL}/register`, userData);
-        return response.data.data.user;
-      } catch (error: any) {
-        return thunkAPI.rejectWithValue(error.response?.data?.message || 'Đăng ký thất bại');
-      }
+  'auth/register',
+  async (userData: any, thunkAPI) => {
+    try {
+
+      const payload = {
+        ...userData,
+        status: 'active'
+      };
+
+      const response = await axios.post(`${AUTH_API_URL}/register`, payload);
+      return response.data.data.user;
+    } catch (error: any) {
+      return thunkAPI.rejectWithValue(error.response?.data?.message || 'Đăng ký thất bại');
     }
+  }
 );
 
-// --- 3. THUNK LẤY USER THEO ID (ĐÃ TỐI ƯU CHẶN LOOP) ---
 export const fetchUserById = createAsyncThunk(
   'auth/fetchUserById',
   async (userId: string, thunkAPI) => {
     try {
       const response = await axios.get(`${USER_API_URL}/${userId}`);
-      const freshUserData = response.data.data || response.data; 
+      const freshUserData = response.data.data || response.data;
 
       localStorage.setItem('user', JSON.stringify(freshUserData));
-      return freshUserData; 
+      return freshUserData;
     } catch (error: any) {
       return thunkAPI.rejectWithValue(error.response?.data?.message || 'Lỗi lấy thông tin user');
     }
   },
   {
-    // === PHẦN QUAN TRỌNG: CHẶN GỌI LẶP ===
     condition: (userId, { getState }) => {
-      const state = getState() as any; // Lấy toàn bộ state Redux hiện tại
+      const state = getState() as any;
       const { user, isLoading } = state.auth;
 
-      // 1. Nếu đang loading (request trước chưa xong) -> KHÔNG GỌI LẠI
-      if (isLoading) {
-        return false;
-      }
-
-      // 2. Nếu user đã có trong store và ID trùng khớp với ID định gọi -> KHÔNG GỌI LẠI
-      // Điều này ngăn chặn việc Component re-render dispatch lại action thừa
-      if (user && user._id === userId) {
-        return false; 
-      }
-
-      return true; // Nếu chưa có hoặc ID khác -> Cho phép gọi API
+      if (isLoading) return false;
+      if (user && user._id === userId) return false;
+      return true;
     }
   }
 );
 
-// --- 4. THUNK CẬP NHẬT THÔNG TIN USER ---
 export const updateUserProfile = createAsyncThunk(
   'auth/updateUserProfile',
   async ({ userId, data }: { userId: string, data: any }, thunkAPI) => {
@@ -125,7 +131,7 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload as string;
       })
-      
+
       // Register
       .addCase(registerUser.pending, (state) => { state.isLoading = true; state.error = null; })
       .addCase(registerUser.fulfilled, (state) => { state.isLoading = false; })
@@ -135,9 +141,8 @@ const authSlice = createSlice({
       })
 
       // Fetch User By ID
-      .addCase(fetchUserById.pending, (state) => { 
-        // Lưu ý: Không set user = null ở đây để tránh nhấp nháy giao diện
-        state.isLoading = true; 
+      .addCase(fetchUserById.pending, (state) => {
+        state.isLoading = true;
       })
       .addCase(fetchUserById.fulfilled, (state, action) => {
         state.isLoading = false;
