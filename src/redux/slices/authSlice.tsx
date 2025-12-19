@@ -3,19 +3,16 @@ import axios from 'axios';
 
 // --- CẤU HÌNH API URL ---
 const AUTH_API_URL = "https://api-class-o1lo.onrender.com/api/khanhphuong/auth"; 
-const USER_API_URL = "https://api-class-o1lo.onrender.com/api/khanhphuong/users"; // API User collection
+const USER_API_URL = "https://api-class-o1lo.onrender.com/api/khanhphuong/users"; 
 
-// --- 1. THUNK LOGIN (ĐĂNG NHẬP) ---
+// --- 1. THUNK LOGIN ---
 export const loginUser = createAsyncThunk(
   'auth/login',
   async (userData: any, thunkAPI) => {
     try {
       const response = await axios.post(`${AUTH_API_URL}/login`, userData);
-      
-      // Lưu thông tin user và token vào LocalStorage
       localStorage.setItem('user', JSON.stringify(response.data.data.user));
       localStorage.setItem('accessToken', response.data.data.accessToken);
-
       return response.data.data.user;
     } catch (error: any) {
       return thunkAPI.rejectWithValue(error.response?.data?.message || 'Đăng nhập thất bại');
@@ -23,7 +20,7 @@ export const loginUser = createAsyncThunk(
   }
 );
 
-// --- 2. THUNK REGISTER (ĐĂNG KÝ) ---
+// --- 2. THUNK REGISTER ---
 export const registerUser = createAsyncThunk(
     'auth/register',
     async (userData: any, thunkAPI) => {
@@ -36,7 +33,7 @@ export const registerUser = createAsyncThunk(
     }
 );
 
-// --- 3. THUNK LẤY USER THEO ID (GET) ---
+// --- 3. THUNK LẤY USER THEO ID (ĐÃ TỐI ƯU CHẶN LOOP) ---
 export const fetchUserById = createAsyncThunk(
   'auth/fetchUserById',
   async (userId: string, thunkAPI) => {
@@ -44,45 +41,53 @@ export const fetchUserById = createAsyncThunk(
       const response = await axios.get(`${USER_API_URL}/${userId}`);
       const freshUserData = response.data.data || response.data; 
 
-      // Cập nhật lại LocalStorage để dữ liệu luôn mới nhất
       localStorage.setItem('user', JSON.stringify(freshUserData));
-      
       return freshUserData; 
     } catch (error: any) {
-      console.error("Lỗi fetch user:", error);
       return thunkAPI.rejectWithValue(error.response?.data?.message || 'Lỗi lấy thông tin user');
+    }
+  },
+  {
+    // === PHẦN QUAN TRỌNG: CHẶN GỌI LẶP ===
+    condition: (userId, { getState }) => {
+      const state = getState() as any; // Lấy toàn bộ state Redux hiện tại
+      const { user, isLoading } = state.auth;
+
+      // 1. Nếu đang loading (request trước chưa xong) -> KHÔNG GỌI LẠI
+      if (isLoading) {
+        return false;
+      }
+
+      // 2. Nếu user đã có trong store và ID trùng khớp với ID định gọi -> KHÔNG GỌI LẠI
+      // Điều này ngăn chặn việc Component re-render dispatch lại action thừa
+      if (user && user._id === userId) {
+        return false; 
+      }
+
+      return true; // Nếu chưa có hoặc ID khác -> Cho phép gọi API
     }
   }
 );
 
-// --- 4. THUNK CẬP NHẬT THÔNG TIN USER (PUT) - ĐÃ SỬA LỖI ---
+// --- 4. THUNK CẬP NHẬT THÔNG TIN USER ---
 export const updateUserProfile = createAsyncThunk(
   'auth/updateUserProfile',
   async ({ userId, data }: { userId: string, data: any }, thunkAPI) => {
     try {
-      // BƯỚC QUAN TRỌNG: Lấy Token từ LocalStorage
       const token = localStorage.getItem('accessToken');
-
-      // Tạo cấu hình Header chứa Token
       const config = {
         headers: {
-          'Authorization': `Bearer ${token}`, // Gửi Token lên để xác thực quyền chủ sở hữu
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       };
 
-      // Gọi API PUT với config đã có Token
       const response = await axios.put(`${USER_API_URL}/${userId}`, data, config);
-      
-      // Lấy dữ liệu user mới sau khi update thành công
       const updatedUser = response.data.data || response.data;
 
-      // Cập nhật lại LocalStorage
       localStorage.setItem('user', JSON.stringify(updatedUser));
-      
       return updatedUser;
     } catch (error: any) {
-      console.error("Lỗi cập nhật API:", error.response?.data);
       return thunkAPI.rejectWithValue(error.response?.data?.message || 'Cập nhật thất bại');
     }
   }
@@ -130,7 +135,10 @@ const authSlice = createSlice({
       })
 
       // Fetch User By ID
-      .addCase(fetchUserById.pending, (state) => { state.isLoading = true; })
+      .addCase(fetchUserById.pending, (state) => { 
+        // Lưu ý: Không set user = null ở đây để tránh nhấp nháy giao diện
+        state.isLoading = true; 
+      })
       .addCase(fetchUserById.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload;
@@ -146,7 +154,7 @@ const authSlice = createSlice({
       })
       .addCase(updateUserProfile.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload; // Cập nhật store ngay lập tức
+        state.user = action.payload;
       })
       .addCase(updateUserProfile.rejected, (state, action) => {
         state.isLoading = false;
