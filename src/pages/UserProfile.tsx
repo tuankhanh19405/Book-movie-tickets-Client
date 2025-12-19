@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Form, Input, ConfigProvider, Spin, message, Empty, Tag, type FormInstance } from "antd";
 import { Calendar, Clock, MapPin, Ticket, User as UserIcon } from "lucide-react";
 
@@ -82,7 +82,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ form, setIsChangePassOpen, on
 );
 
 // =========================================
-// 2. COMPONENT CON: LỊCH SỬ MUA VÉ (ĐÃ SỬA LỖI DATE)
+// 2. COMPONENT CON: LỊCH SỬ MUA VÉ
 // =========================================
 interface PurchaseHistoryProps {
   history: any[];
@@ -97,33 +97,24 @@ const PurchaseHistory: React.FC<PurchaseHistoryProps> = ({ history, isLoading })
        </div>
     ) : history && history.length > 0 ? (
       history.map((ticket: any) => {
-          // --- 1. XỬ LÝ TÊN PHIM & POSTER ---
           const movieName = ticket.movie_title || ticket.movie_details?.title || "Phim chưa cập nhật tên";
           const posterUrl = ticket.movie_details?.poster_url || "https://via.placeholder.com/150x220?text=No+Image";
           
-          // --- 2. XỬ LÝ NGÀY CHIẾU (DATE) AN TOÀN ---
           let displayDate = "Đang cập nhật";
-          
           if (ticket.date) {
-            // Trường hợp 1: Date là chuỗi "DD/MM/YYYY" (VD: "08/12/2025") -> Hiển thị luôn
             if (ticket.date.includes('/')) {
                 displayDate = ticket.date;
-            } 
-            // Trường hợp 2: Date là ISO String (VD: "2025-12-08T00:00...") -> Format lại
-            else {
+            } else {
                 const d = new Date(ticket.date);
                 if (!isNaN(d.getTime())) {
                     displayDate = d.toLocaleDateString('vi-VN');
                 }
             }
           } else if (ticket.created_at) {
-             // Fallback: Nếu không có ngày chiếu, lấy ngày mua vé
              displayDate = new Date(ticket.created_at).toLocaleDateString('vi-VN');
           }
 
-          // --- 3. XỬ LÝ GIỜ CHIẾU (TIME) ---
           let displayTime = ticket.time;
-          // Nếu time bị lỗi hoặc không có, thử lấy từ created_at
           if (!displayTime || displayTime === "Invalid Date") {
              if (ticket.created_at) {
                 displayTime = new Date(ticket.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit'});
@@ -132,7 +123,6 @@ const PurchaseHistory: React.FC<PurchaseHistoryProps> = ({ history, isLoading })
              }
           }
           
-          // --- 4. DANH SÁCH GHẾ ---
           let seatList = "Chưa chọn ghế";
           if (Array.isArray(ticket.seats) && ticket.seats.length > 0) {
              seatList = ticket.seats.join(", "); 
@@ -165,7 +155,7 @@ const PurchaseHistory: React.FC<PurchaseHistoryProps> = ({ history, isLoading })
                      </div>
                      <div className="flex items-center gap-2">
                         <Calendar size={14} className="text-red-600" />
-                        <span className="text-white">{displayDate}</span> {/* Đã sửa */}
+                        <span className="text-white">{displayDate}</span>
                      </div>
                      <div className="flex items-center gap-2">
                         <Ticket size={14} className="text-red-600" />
@@ -173,7 +163,7 @@ const PurchaseHistory: React.FC<PurchaseHistoryProps> = ({ history, isLoading })
                      </div>
                      <div className="flex items-center gap-2">
                         <Clock size={14} className="text-red-600" />
-                        <span>{displayTime}</span> {/* Đã sửa */}
+                        <span>{displayTime}</span>
                      </div>
                   </div>
                 </div>
@@ -191,14 +181,14 @@ const PurchaseHistory: React.FC<PurchaseHistoryProps> = ({ history, isLoading })
     ) : (
       <div className="py-16 flex flex-col items-center justify-center bg-[#151a23] rounded-xl border border-gray-800 border-dashed">
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span className="text-gray-500">Bạn chưa có lịch sử đặt vé nào</span>} />
-          {/* Nút đặt vé ngay chuyển hướng về trang chủ */}
           <a href="/" className="mt-4 text-red-500 hover:text-red-400 font-bold text-sm cursor-pointer">Đặt vé ngay</a>
       </div>
     )}
   </div>
 );
+
 // =========================================
-// 3. COMPONENT CHÍNH: UserProfile
+// 3. COMPONENT CHÍNH: UserProfile (Đã Sửa Lỗi Loop)
 // =========================================
 
 const UserProfile = () => {
@@ -212,15 +202,19 @@ const UserProfile = () => {
   const [activeTab, setActiveTab] = useState<'profile' | 'history' | 'membership'>('profile');
   const [isChangePassOpen, setIsChangePassOpen] = useState(false);
 
-  // --- GỌI API BAN ĐẦU ---
+  // --- [FIX]: Dùng useRef để tránh gọi API lặp lại vô hạn ---
+  const fetchedUserIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (user && user._id) {
+    // Chỉ gọi API khi ID user tồn tại VÀ khác với ID đã fetch trước đó
+    if (user && user._id && fetchedUserIdRef.current !== user._id) {
+      fetchedUserIdRef.current = user._id; // Đánh dấu đã fetch
       dispatch(fetchUserById(user._id));
       dispatch(fetchBookingsByUserId(user._id));
     }
   }, [dispatch, user?._id]);
 
-  // --- FILL DATA VÀO FORM ---
+  // --- FILL DATA VÀO FORM (Đã tối ưu) ---
   useEffect(() => {
     if (user) {
       const fullName = user.username || "";
@@ -235,13 +229,21 @@ const UserProfile = () => {
         firstName = fullName;
       }
 
-      form.setFieldsValue({
-        lastname: lastName,
-        firstname: firstName,
-        phone: user.phone,
-        username_display: user.username,
-        email: user.email,
-      });
+      // Kiểm tra dữ liệu hiện tại của form để tránh set lại không cần thiết
+      const currentValues = form.getFieldsValue();
+      if (
+          currentValues.email !== user.email || 
+          currentValues.phone !== user.phone ||
+          currentValues.username_display !== user.username
+      ) {
+          form.setFieldsValue({
+            lastname: lastName,
+            firstname: firstName,
+            phone: user.phone,
+            username_display: user.username,
+            email: user.email,
+          });
+      }
     }
   }, [user, form]);
 
@@ -249,7 +251,6 @@ const UserProfile = () => {
   const handleUpdateProfile = async (values: any) => {
     if (!user?._id) return;
 
-    // Ghép Họ + Tên -> username mới
     const newUsername = `${values.lastname.trim()} ${values.firstname.trim()}`;
 
     const updateData = {
@@ -260,7 +261,7 @@ const UserProfile = () => {
     try {
       await dispatch(updateUserProfile({ userId: user._id, data: updateData })).unwrap();
       message.success("Cập nhật thông tin thành công!");
-      dispatch(fetchUserById(user._id)); // Refresh lại data
+      // Không cần gọi fetchUserById ở đây nữa vì updateUserProfile trong slice đã cập nhật state rồi
     } catch (error) {
       message.error("Cập nhật thất bại. Vui lòng thử lại.");
     }
