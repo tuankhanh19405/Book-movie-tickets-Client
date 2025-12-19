@@ -1,8 +1,9 @@
-import  { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Spin, message, Input, Button, ConfigProvider } from "antd";
 import { CreditCard, Lock, ShieldCheck, Calendar, MapPin, Armchair } from "lucide-react";
-// 1. Import Redux
+
+// --- IMPORT REDUX ---
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import { createBooking } from "../redux/slices/bookingSlice";
 
@@ -11,12 +12,13 @@ const FakePaymentGateway = () => {
   const location = useLocation();
   const dispatch = useAppDispatch();
 
-  // Lấy user từ Redux
+  // 1. Lấy User từ Redux
   const { user } = useAppSelector((state) => state.auth);
 
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("atm");
 
+  // Lấy dữ liệu từ trang BookingPage
   const bookingData = location.state || {};
   
   const totalAmount = bookingData.totalAmount || 0; 
@@ -25,15 +27,16 @@ const FakePaymentGateway = () => {
   const cinemaName = "NCC Cinema - Rạp 5"; 
   const showTime = `${bookingData.time} - ${bookingData.date}`;
 
+  // Bảo vệ route
   useEffect(() => {
-    if (!location.state) {
-      message.warning("Không tìm thấy thông tin đơn hàng!");
+    if (!location.state || seats.length === 0) {
+      message.warning("Không tìm thấy thông tin đơn hàng hoặc chưa chọn ghế!");
       navigate("/");
     }
-  }, [location.state, navigate]);
+  }, [location.state, navigate, seats.length]);
 
   const handleConfirmPayment = async () => {
-    // 1. Validate đăng nhập
+    // 1. Kiểm tra đăng nhập
     if (!user || !user._id) {
         message.error("Vui lòng đăng nhập để thực hiện đặt vé!");
         return;
@@ -41,22 +44,22 @@ const FakePaymentGateway = () => {
 
     setLoading(true);
 
-    // 2. CHUẨN BỊ DỮ LIỆU (PAYLOAD) KHỚP VỚI DATABASE SCHEMA
-    // Dựa vào ảnh sơ đồ DB bạn gửi:
+    // 2. CHUẨN BỊ DỮ LIỆU (PAYLOAD) - CẬP NHẬT LOGIC LƯU QR TẠI ĐÂY
     const finalOrderData = {
-        // 🔥 QUAN TRỌNG: Sửa userId -> user_id
         user_id: user._id,           
+        showtime_id: bookingData.showtimeId, 
         
-        showtime_id: bookingData.showtimeId, // ID suất chiếu (foreign key)
-        
-        // Trường 'tickets' dạng JSON: lưu danh sách ghế chi tiết
+        // 🔥 UPDATE: Lưu chi tiết từng ghế để sau này tạo QR riêng cho mỗi ghế
         tickets: seats.map((seat: string) => ({
             seat_name: seat,
-            price: bookingData.price || 0, // Giá từng ghế (nếu có)
-            type: "standard"
+            price: bookingData.pricePerSeat || (totalAmount / seats.length) || 0,
+            type: "standard",
+            // Hai trường này giúp Admin quét QR từng ghế riêng biệt
+            isCheckIn: false, 
+            checkInAt: null
         })),
 
-        // Trường 'payment_info' dạng JSON
+        // Thông tin thanh toán
         payment_info: {
             method: paymentMethod,
             transaction_id: `TXN-${Date.now()}`,
@@ -64,33 +67,37 @@ const FakePaymentGateway = () => {
         },
 
         total_amount: totalAmount,
-        status: 'confirmed', // Trạng thái vé
+        status: 'confirmed',
         
-        // Các trường bổ sung (tuỳ backend có nhận hay không, nhưng nên gửi để UI hiển thị ngay)
+        // Các trường phụ trợ cho UI
         movie_title: movieTitle, 
-        seats: seats, // Mảng ghế đơn giản để lọc nhanh nếu cần
+        seats: seats,
+        
+        // Trạng thái chung (tuỳ chọn)
+        isCheckIn: false,
     };
 
     console.log("Payload gửi đi:", finalOrderData);
 
     try {
-        // 3. GỌI API
+        // 3. GỌI REDUX ACTION
         const result = await dispatch(createBooking(finalOrderData)).unwrap();
         
         setLoading(false);
-        message.success("Thanh toán và lưu vé thành công!");
+        message.success("Thanh toán thành công!");
 
         // 4. CHUYỂN TRANG
+        // Truyền ID thật từ Database (_id) sang trang Success để tạo QR
         navigate("/ticket-success", { 
             state: { 
-              booking: { ...finalOrderData, _id: result._id || "new_id" } 
+              booking: { ...finalOrderData, _id: result._id } 
             } 
         });
 
     } catch (error: any) {
         setLoading(false);
         console.error("Lỗi đặt vé:", error);
-        message.error("Lỗi hệ thống: " + (error.message || "Không thể lưu vé"));
+        message.error(typeof error === 'string' ? error : "Lỗi hệ thống, vui lòng thử lại!");
     }
   };
 
@@ -110,9 +117,9 @@ const FakePaymentGateway = () => {
       <div className="min-h-screen bg-[#0b0e14] flex items-center justify-center py-10 px-4 font-sans relative">
         
         {loading && (
-          <div className="absolute inset-0 bg-black/90 z-[999] flex flex-col items-center justify-center backdrop-blur-sm">
+          <div className="absolute inset-0 bg-black/90 z-[999] flex flex-col items-center justify-center backdrop-blur-sm rounded-none md:rounded-2xl">
             <Spin size="large" />
-            <p className="mt-6 text-white font-bold text-lg animate-pulse">Đang kết nối đến hệ thống vé...</p>
+            <p className="mt-6 text-white font-bold text-lg animate-pulse">Đang xử lý giao dịch...</p>
           </div>
         )}
 
@@ -161,7 +168,7 @@ const FakePaymentGateway = () => {
             </div>
           </div>
 
-          {/* CỘT PHẢI - FORM THANH TOÁN */}
+          {/* CỘT PHẢI: FORM THANH TOÁN */}
           <div className="w-full md:w-2/3 p-8 md:p-10 relative">
             <h3 className="text-2xl font-bold text-white mb-8">Phương thức thanh toán</h3>
 
@@ -201,6 +208,7 @@ const FakePaymentGateway = () => {
               </div>
             </div>
 
+            {/* Các ô input giả lập */}
             <div className="space-y-5">
               <div>
                 <label className="block text-xs font-bold text-gray-400 uppercase mb-2 ml-1">Số thẻ</label>
@@ -227,6 +235,7 @@ const FakePaymentGateway = () => {
             <div className="mt-10">
               <Button 
                   onClick={handleConfirmPayment}
+                  disabled={loading}
                   className="w-full h-14 bg-[#ce1212] hover:!bg-red-700 border-none text-white text-lg font-bold rounded-xl shadow-lg shadow-red-900/30 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]"
               >
                   <Lock size={20} /> THANH TOÁN NGAY
