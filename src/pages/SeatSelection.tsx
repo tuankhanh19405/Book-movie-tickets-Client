@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
-import { message } from "antd"; // Dùng để hiển thị thông báo lỗi
+import { message } from "antd";
 
 // Import Actions
 import { fetchMovies } from "../redux/slices/movieSlice";
@@ -81,7 +81,6 @@ export default function BookingPage() {
     else setSelectedShowtimeId("");
   }, [selectedDateKey, currentShowtimes]);
 
-  // Reset ghế và load ghế đã đặt khi đổi suất chiếu
   useEffect(() => {
     if (selectedShowtimeId) {
         setSelectedSeats([]); 
@@ -89,33 +88,43 @@ export default function BookingPage() {
     }
   }, [dispatch, selectedShowtimeId]);
 
-  // --- 6. LOGIC CHECK GHẾ TRỐNG (ĐÃ FIX LỖI CÁCH GHẾ) ---
+  // --- 6. LOGIC CHECK GHẾ TRỐNG (NÂNG CẤP) ---
   const validateSeatSelection = () => {
-    // Tạo Set chứa tất cả các ghế đã bị chiếm (Ghế đã bán + Ghế đang chọn)
+    // Tập hợp tất cả các ghế "có người" (ghế đã bán + ghế khách đang chọn)
     const allOccupied = new Set([...bookedSeats, ...selectedSeats]);
 
-    // Duyệt qua từng ghế khách đang chọn để kiểm tra xung quanh nó
-    for (const seat of selectedSeats) {
-        const row = seat.charAt(0);
-        const num = parseInt(seat.substring(1));
+    // Duyệt qua từng hàng để kiểm tra tính toàn vẹn của hàng đó
+    for (const row of rows) {
+        let emptyCount = 0; // Đếm số ghế trống liên tiếp
+        let hasProcessedFirstOccupied = false; // Đánh dấu xem đã gặp ghế có người nào trong hàng chưa
 
-        // --- KIỂM TRA BÊN PHẢI ---
-        // Nếu ghế cách 1 ô (num + 2) có người VÀ ghế sát bên (num + 1) trống => LỖI
-        // Ví dụ: Chọn B5. B7 có người. B6 trống => Lỗi.
-        const right1 = `${row}${num + 1}`;
-        const right2 = `${row}${num + 2}`;
-        
-        if (allOccupied.has(right2) && !allOccupied.has(right1)) {
-             return false;
+        for (let i = 1; i <= seatsPerRow; i++) {
+            const seatId = `${row}${i}`;
+            const isOccupied = allOccupied.has(seatId);
+
+            if (!isOccupied) {
+                // Nếu là ghế trống, tăng biến đếm
+                emptyCount++;
+            } else {
+                // Nếu gặp ghế CÓ NGƯỜI
+                
+                // 1. Kiểm tra khoảng trống TRƯỚC ghế này
+                // Nếu emptyCount == 1, nghĩa là có 1 ghế trống lẻ loi ngay trước ghế này
+                if (emptyCount === 1) {
+                    return false; // LỖI: Để trống 1 ghế bên trái hoặc đầu hàng
+                }
+
+                // Reset biến đếm để tính khoảng trống tiếp theo
+                emptyCount = 0;
+                hasProcessedFirstOccupied = true;
+            }
         }
 
-        // --- KIỂM TRA BÊN TRÁI ---
-        // Tương tự cho bên trái
-        const left1 = `${row}${num - 1}`;
-        const left2 = `${row}${num - 2}`;
-
-        if (num > 2 && allOccupied.has(left2) && !allOccupied.has(left1)) {
-             return false;
+        // 2. Kiểm tra khoảng trống CUỐI hàng
+        // Sau khi chạy hết vòng lặp, nếu emptyCount == 1 và trước đó đã có ghế người ngồi
+        // Nghĩa là chừa lại 1 ghế trống ở cuối hàng
+        if (hasProcessedFirstOccupied && emptyCount === 1) {
+            return false; // LỖI: Để trống 1 ghế cuối hàng
         }
     }
     
@@ -135,8 +144,8 @@ export default function BookingPage() {
     // --- BƯỚC KIỂM TRA QUAN TRỌNG ---
     const isValid = validateSeatSelection();
     if (!isValid) {
-        message.error("Vui lòng không để ghế trống đơn lẻ ở giữa!");
-        return; // Dừng lại, không chuyển trang
+        message.error("Vui lòng không để trống 1 ghế đơn lẻ (đầu hàng, cuối hàng hoặc giữa các ghế)!");
+        return; 
     }
 
     dispatch(setBookingInfo({
@@ -152,7 +161,7 @@ export default function BookingPage() {
     navigate("/payment");
   };
 
-  // --- RENDER ---
+  // --- RENDER (GIỮ NGUYÊN) ---
   if (isMovieLoading || isShowtimeLoading) return <div className="min-h-screen bg-[#0b0e14] flex items-center justify-center text-white">Đang tải dữ liệu...</div>;
   if (!movie) return <div className="min-h-screen bg-[#0b0e14] flex items-center justify-center text-red-500">Không tìm thấy phim!</div>;
 
@@ -179,8 +188,7 @@ export default function BookingPage() {
             <div className="flex flex-wrap gap-2 mb-4">
                 {availableDates.length > 0 ? availableDates.map((dateStr) => {
                     const [day, month, year] = dateStr.split('/');
-                    const dateObj = new Date(Number(year), Number(month) - 1, Number(day));
-                    const dow = dateObj.toLocaleDateString('vi-VN', { weekday: 'long' });
+                    const dow = new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString('vi-VN', { weekday: 'long' });
                     return (
                         <button key={dateStr} onClick={() => setSelectedDateKey(dateStr)} className={`flex flex-col items-center justify-center w-20 h-20 rounded-lg border-2 transition-all ${selectedDateKey === dateStr ? "bg-red-600 border-red-600 text-white scale-105 shadow-lg" : "bg-[#151a23] border-gray-800 text-gray-400 hover:border-gray-600"}`}>
                             <span className="text-2xl font-bold">{day}/{month}</span>
