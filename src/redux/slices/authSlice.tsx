@@ -17,7 +17,7 @@ export const loginUser = createAsyncThunk(
 
 
       if (user.status === 'banned') {
-        return thunkAPI.rejectWithValue('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ với Phan Khanh để được giải quyết vấn đề nhanh nhất có thể nhé!!!');
+        return thunkAPI.rejectWithValue('Tài khoản của bạn đã bị khóa. Vui lòng banking cho ADMIN để được giải quyết vấn đề nhanh nhất có thể nhé!!!');
       }
 
       localStorage.setItem('user', JSON.stringify(user));
